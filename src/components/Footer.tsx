@@ -10,12 +10,17 @@ interface SisterSite {
 
 interface Props {
   lastUpdated: Date | null;
+  /** @deprecated Use `sisterSites` instead */
   sisterSite?: SisterSite;
+  sisterSites?: SisterSite[];
 }
 
-export default function Footer({ lastUpdated, sisterSite }: Props) {
+export default function Footer({ lastUpdated, sisterSite, sisterSites }: Props) {
   const { lang } = useLanguage();
   const { t } = useTranslation();
+
+  // Merge legacy single prop with new array prop
+  const sites: SisterSite[] = sisterSites ?? (sisterSite ? [sisterSite] : []);
 
   return (
     <footer className="w-full py-8 px-4 mt-8 border-t border-divider">
@@ -47,15 +52,20 @@ export default function Footer({ lastUpdated, sisterSite }: Props) {
             Ben Greenberg
           </a>
         </p>
-        {sisterSite && (
-          <a
-            href={sisterSite.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-xs text-cream/20 hover:text-cream/40 transition-colors duration-300 underline underline-offset-2 decoration-cream/10 hover:decoration-cream/25"
-          >
-            {lang === "he" ? sisterSite.nameHe : sisterSite.nameEn}
-          </a>
+        {sites.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1">
+            {sites.map((site) => (
+              <a
+                key={site.href}
+                href={site.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-cream/20 hover:text-cream/40 transition-colors duration-300 underline underline-offset-2 decoration-cream/10 hover:decoration-cream/25"
+              >
+                {lang === "he" ? site.nameHe : site.nameEn}
+              </a>
+            ))}
+          </div>
         )}
         <a
           href="https://buymeacoffee.com/bengreenberg"
