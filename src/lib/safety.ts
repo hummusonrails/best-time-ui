@@ -61,10 +61,29 @@ export function computeStats(alerts: ProcessedAlert[]): SafetyStats {
   );
 
   const lastDate = new Date(sorted[0].timestamp);
-  const lastAlertTime = lastDate.toLocaleTimeString("en-US", {
+  const today = new Date();
+  const isToday = lastDate.toDateString() === today.toDateString();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = lastDate.toDateString() === yesterday.toDateString();
+
+  const timeStr = lastDate.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  let lastAlertTime: string;
+  if (isToday) {
+    lastAlertTime = timeStr;
+  } else if (isYesterday) {
+    lastAlertTime = `Yesterday ${timeStr}`;
+  } else {
+    const dateStr = lastDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    lastAlertTime = `${dateStr}, ${timeStr}`;
+  }
 
   return {
     timeSinceLastAlert,
