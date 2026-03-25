@@ -20,7 +20,7 @@ export { sharedTranslations, mergeTranslations } from "./lib/i18n";
 
 // Lib
 export { useHaptics } from "./lib/haptics";
-export { computeStats, calculateSafetyScore, formatDuration } from "./lib/safety";
+export { computeStats, calculateSafetyScore, computePreAlertStatus, formatDuration } from "./lib/safety";
 export { regions, detectRegionFromCoordinates, filterAlertsByRegion } from "./lib/regions";
 
 // Types
@@ -32,5 +32,7 @@ export type {
   SafetyRecommendation,
   Language,
   Translations,
+  PreAlert,
+  PreAlertStatus,
 } from "./lib/types";
 export type { Region } from "./lib/regions";

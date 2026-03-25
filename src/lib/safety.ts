@@ -1,4 +1,4 @@
-import { ProcessedAlert, SafetyStats } from "./types";
+import { ProcessedAlert, SafetyStats, PreAlert, PreAlertStatus } from "./types";
 
 export function computeStats(alerts: ProcessedAlert[]): SafetyStats {
   const now = Date.now();
@@ -95,19 +95,103 @@ export function computeStats(alerts: ProcessedAlert[]): SafetyStats {
   };
 }
 
+export function computePreAlertStatus(
+  preAlerts: PreAlert[],
+  regionId?: string | null
+): PreAlertStatus {
+  const now = Date.now();
+  const thirtyMin = 30 * 60 * 1000;
+  const twoHours = 2 * 60 * 60 * 1000;
+  const sixHours = 6 * 60 * 60 * 1000;
+
+  const filtered = preAlerts.filter((pa) => {
+    if (!regionId) return true;
+    if (pa.regions.length === 0) return true;
+    return pa.regions.includes(regionId);
+  });
+
+  const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+
+  const warnings = sorted.filter((pa) => pa.alert_type === "early_warning");
+  const exits = sorted.filter((pa) => pa.alert_type === "exit_notification");
+
+  const lastWarning = warnings.length > 0 ? warnings[0] : null;
+  const lastExit = exits.length > 0 ? exits[0] : null;
+
+  const lastWarningMinutesAgo = lastWarning
+    ? (now - lastWarning.timestamp) / (1000 * 60)
+    : null;
+  const lastExitMinutesAgo = lastExit
+    ? (now - lastExit.timestamp) / (1000 * 60)
+    : null;
+
+  const hasActiveWarning =
+    lastWarning !== null && now - lastWarning.timestamp <= thirtyMin;
+
+  const hasRecentExit =
+    lastExit !== null &&
+    now - lastExit.timestamp <= thirtyMin &&
+    (lastWarning === null || lastExit.timestamp > lastWarning.timestamp);
+
+  const warningCount2h = warnings.filter(
+    (pa) => now - pa.timestamp <= twoHours
+  ).length;
+
+  const warningCount6h = warnings.filter(
+    (pa) => now - pa.timestamp <= sixHours
+  ).length;
+
+  return {
+    hasActiveWarning,
+    hasRecentExit,
+    warningCount2h,
+    warningCount6h,
+    lastWarningMinutesAgo,
+    lastExitMinutesAgo,
+  };
+}
+
 export function calculateSafetyScore(
   timeSinceLastAlert: number,
   averageGap: number,
   trend: "increasing" | "decreasing" | "stable",
-  alertCount24h: number
+  alertCount24h: number,
+  preAlertStatus?: PreAlertStatus
 ): number {
   const timeScore = Math.min(100, (timeSinceLastAlert / 60) * 100);
   const gapScore = averageGap === Infinity ? 100 : Math.min(100, (averageGap / 60) * 100);
   const trendScore = trend === "decreasing" ? 80 : trend === "stable" ? 50 : 20;
   const freqScore = Math.max(0, 100 - alertCount24h * 5);
 
-  const weighted =
-    timeScore * 0.4 + gapScore * 0.25 + trendScore * 0.2 + freqScore * 0.15;
+  if (!preAlertStatus) {
+    const weighted =
+      timeScore * 0.4 + gapScore * 0.25 + trendScore * 0.2 + freqScore * 0.15;
+    return Math.round(Math.max(0, Math.min(100, weighted)));
+  }
+
+  let preAlertScore: number;
+  if (preAlertStatus.hasActiveWarning) {
+    preAlertScore = 20;
+  } else if (preAlertStatus.warningCount2h >= 2) {
+    preAlertScore = 40;
+  } else if (preAlertStatus.warningCount6h >= 3) {
+    preAlertScore = 60;
+  } else if (preAlertStatus.hasRecentExit) {
+    preAlertScore = 100;
+  } else {
+    preAlertScore = 80;
+  }
+
+  let weighted =
+    timeScore * 0.35 +
+    gapScore * 0.2 +
+    trendScore * 0.15 +
+    freqScore * 0.1 +
+    preAlertScore * 0.2;
+
+  if (preAlertStatus.hasRecentExit && !preAlertStatus.hasActiveWarning) {
+    weighted = Math.min(100, weighted + 7);
+  }
 
   return Math.round(Math.max(0, Math.min(100, weighted)));
 }
