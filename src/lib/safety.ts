@@ -171,26 +171,39 @@ export function calculateSafetyScore(
 
   let preAlertScore: number;
   if (preAlertStatus.hasActiveWarning) {
-    preAlertScore = 20;
+    preAlertScore = 10;
   } else if (preAlertStatus.warningCount2h >= 2) {
-    preAlertScore = 40;
+    preAlertScore = 25;
   } else if (preAlertStatus.warningCount6h >= 3) {
-    preAlertScore = 60;
+    preAlertScore = 50;
   } else if (preAlertStatus.hasRecentExit) {
     preAlertScore = 100;
   } else {
-    preAlertScore = 80;
+    preAlertScore = 75;
   }
 
+  // When warnings are active, pre-alerts dominate the score to prevent
+  // contradictory "safe" verdict + "warnings detected" banner
+  const preAlertWeight = preAlertStatus.hasActiveWarning ? 0.40
+    : preAlertStatus.warningCount2h >= 2 ? 0.35
+    : 0.20;
+  const remainingWeight = 1.0 - preAlertWeight;
+
   let weighted =
-    timeScore * 0.35 +
-    gapScore * 0.2 +
-    trendScore * 0.15 +
-    freqScore * 0.1 +
-    preAlertScore * 0.2;
+    timeScore * (0.40 * remainingWeight / 0.80) +
+    gapScore * (0.25 * remainingWeight / 0.80) +
+    trendScore * (0.15 * remainingWeight / 0.80) +
+    preAlertScore * preAlertWeight;
 
   if (preAlertStatus.hasRecentExit && !preAlertStatus.hasActiveWarning) {
     weighted = Math.min(100, weighted + 7);
+  }
+
+  // Hard cap: cannot be "safe" (>70) with active warnings or recent multi-warnings
+  if (preAlertStatus.hasActiveWarning) {
+    weighted = Math.min(35, weighted);
+  } else if (preAlertStatus.warningCount2h >= 2) {
+    weighted = Math.min(55, weighted);
   }
 
   return Math.round(Math.max(0, Math.min(100, weighted)));
