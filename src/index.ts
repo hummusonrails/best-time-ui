@@ -8,6 +8,7 @@ export { default as AlertTimeline } from "./components/AlertTimeline";
 export { default as ScrollReveal } from "./components/ScrollReveal";
 export { default as HowItWorks } from "./components/HowItWorks";
 export { default as InstallPrompt } from "./components/InstallPrompt";
+export { default as PreAlertCard } from "./components/PreAlertCard";
 
 // Hooks
 export { useCountUp } from "./hooks/useCountUp";
