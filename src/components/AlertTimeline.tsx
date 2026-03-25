@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "../lib/I18nContext";
-import type { ProcessedAlert } from "../lib/types";
+import type { ProcessedAlert, PreAlert } from "../lib/types";
 import {
   BarChart,
   Bar,
@@ -15,15 +15,17 @@ import {
 
 interface Props {
   alerts: ProcessedAlert[];
+  preAlerts?: PreAlert[];
 }
 
 interface HourBucket {
   hour: string;
   count: number;
+  preAlertCount: number;
   isNow: boolean;
 }
 
-export default function AlertTimeline({ alerts }: Props) {
+export default function AlertTimeline({ alerts, preAlerts }: Props) {
   const { t } = useTranslation();
 
   const now = new Date();
@@ -39,6 +41,10 @@ export default function AlertTimeline({ alerts }: Props) {
       (a) => a.timestamp >= bucketStart.getTime() && a.timestamp < bucketEnd.getTime()
     ).length;
 
+    const preAlertCount = (preAlerts ?? []).filter(
+      (pa) => pa.timestamp >= bucketStart.getTime() && pa.timestamp < bucketEnd.getTime()
+    ).length;
+
     const hourLabel = bucketStart.toLocaleTimeString("en-US", {
       hour: "numeric",
       hour12: true,
@@ -47,9 +53,12 @@ export default function AlertTimeline({ alerts }: Props) {
     buckets.push({
       hour: hourLabel,
       count,
+      preAlertCount,
       isNow: i === 0,
     });
   }
+
+  const hasPreAlerts = buckets.some((b) => b.preAlertCount > 0);
 
   const nowIndex = buckets.findIndex((b) => b.isNow);
 
@@ -88,7 +97,7 @@ export default function AlertTimeline({ alerts }: Props) {
               itemStyle={{ color: "#FFEEC8" }}
               cursor={{ fill: "rgba(255,238,200,0.06)" }}
             />
-            <Bar dataKey="count" radius={[2, 2, 0, 0]} maxBarSize={20}>
+            <Bar dataKey="count" radius={[2, 2, 0, 0]} maxBarSize={20} stackId="alerts">
               {buckets.map((entry, index) => (
                 <Cell
                   key={index}
@@ -104,6 +113,9 @@ export default function AlertTimeline({ alerts }: Props) {
                 />
               ))}
             </Bar>
+            {hasPreAlerts && (
+              <Bar dataKey="preAlertCount" radius={[2, 2, 0, 0]} maxBarSize={20} stackId="alerts" fill="#F59E0B" fillOpacity={0.4} />
+            )}
             {nowIndex >= 0 && (
               <ReferenceLine
                 x={buckets[nowIndex].hour}
@@ -121,6 +133,18 @@ export default function AlertTimeline({ alerts }: Props) {
             )}
           </BarChart>
         </ResponsiveContainer>
+        {hasPreAlerts && (
+          <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-white/5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: "rgba(239,68,68,0.5)" }} />
+              <span className="font-mono text-[9px] opacity-40">Sirens</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: "rgba(245,158,11,0.4)" }} />
+              <span className="font-mono text-[9px] opacity-40">Pre-alerts</span>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
