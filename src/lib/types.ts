@@ -39,3 +39,23 @@ export type Translations = {
   en: Record<string, string>;
   he: Record<string, string>;
 };
+
+export interface PreAlert {
+  id: string;
+  timestamp: number;
+  title_he: string;
+  body_he: string;
+  city_ids: number[];
+  regions: string[];
+  alert_type: "early_warning" | "exit_notification";
+  created_at: number;
+}
+
+export interface PreAlertStatus {
+  hasActiveWarning: boolean;
+  hasRecentExit: boolean;
+  warningCount2h: number;
+  warningCount6h: number;
+  lastWarningMinutesAgo: number | null;
+  lastExitMinutesAgo: number | null;
+}
